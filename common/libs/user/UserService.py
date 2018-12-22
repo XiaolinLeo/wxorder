@@ -1,8 +1,7 @@
 # @author : Leo
 # @time : 2018/12/14 下午12:09
 import hashlib, base64
-
-
+import random,string
 
 
 class UserService():
@@ -22,3 +21,10 @@ class UserService():
         m.update(str.encode("utf-8"))
         return m.hexdigest()
 
+    @staticmethod
+    def geneSalt(length = 16):
+        salt_list = [random.choice((string.ascii_letters+string.digits)) for i in range(length)]
+        return ("".join(salt_list))
+
+
+UserService.geneSalt()
