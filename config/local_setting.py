@@ -25,3 +25,8 @@ IGNORE_STATIC_URLS = [
 
 PAGE_SIZE = 1
 PAGE_DISPLAY = 10
+
+ACCOUNT_STATUS ={
+    "1":"正常",
+    "0":"禁用"
+}

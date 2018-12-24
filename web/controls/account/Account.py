@@ -2,7 +2,7 @@
 # @time : 2018/12/12 下午10:16
 from flask import Blueprint, redirect, request
 
-from common.libs.Helper import ops_render, createCurrentTime,Pagination
+from common.libs.Helper import ops_render, createCurrentTime, Pagination
 from common.models.User import User
 
 from common.libs.user.UserService import UserService
@@ -10,29 +10,47 @@ from common.libs.user.UserService import UserService
 from common.libs.UrlManager import UrlManager
 
 from application import app, db
+from sqlalchemy import or_
 
 route_account = Blueprint('account_page', __name__)
 
 
-@route_account.route('/index')
+@route_account.route('/index', methods=["GET", "POST"])
 def index():
     resp_data = {}
     count = User.query.count()
     req = request.values
     page = int(req['p'] if 'p' in req and req['p'] else 1)
+
     page_params = {
-        'total':count,
-        'page_size':app.config['PAGE_SIZE'],
-        'page':page,
-        'display':app.config['PAGE_DISPLAY'],
-        'url':request.full_path.replace("&p={}".format(page),"")
+        'total': count,
+        'page_size': app.config['PAGE_SIZE'],
+        'page': page,
+        'display': app.config['PAGE_DISPLAY'],
+        'url': request.full_path.replace("&p={}".format(page), "")
     }
     pages = Pagination(page_params)
-    offset = (page - 1) *app.config['PAGE_SIZE']
+    offset = (page - 1) * app.config['PAGE_SIZE']
     limit = app.config['PAGE_SIZE'] * page
     lists = User.query.order_by(User.uid.desc()).all()[offset:limit]
     resp_data['lists'] = lists
     resp_data['pages'] = pages
+    resp_data['search_con'] = req
+    resp_data['account_status'] = app.config['ACCOUNT_STATUS']
+    # 如果查询关键字 渲染查询结果否则其他渲染用户列表
+    if 'mix_kw' in req:
+        rule = or_(User.nickname.ilike("%{}%".format(req['mix_kw'])), User.mobile.ilike("%{}%".format(req['mix_kw'])))
+        query = User.query.filter(rule).all()
+        resp_data['lists'] = query
+
+    if 'status' in req and int(req['status']) == 1:
+        query = User.query.filter(User.status == int(req['status'])).all()
+        resp_data['lists'] = query
+
+    if 'status' in req and int(req['status']) == 0:
+        query = User.query.filter(User.status == int(req['status'])).all()
+        resp_data['lists'] = query
+
     return ops_render('/account/index.html', resp_data)
 
 
@@ -57,7 +75,7 @@ def set():
     default_pwd = "******"
     if request.method == 'GET':
         resp_data = {}
-        #根据传过来的id判断用户是新增还是修改用户
+        # 根据传过来的id判断用户是新增还是修改用户
         req = request.args
         uid = req.get("id", 0)
         user_info = None
@@ -65,7 +83,7 @@ def set():
             user_info = User.query.filter_by(uid=uid).first()
         resp_data['user_info'] = user_info
 
-        return ops_render('/account/set.html',resp_data)
+        return ops_render('/account/set.html', resp_data)
 
     req = request.values
 
@@ -102,12 +120,12 @@ def set():
         resp['msg'] = '请输入符合规范的姓名'
         return ops_render('account/set.html', resp)
 
-    has_in = User.query.filter(User.login_name == login_name,User.uid!=id ).first()
+    has_in = User.query.filter(User.login_name == login_name, User.uid != id).first()
     if has_in:
         resp['code'] = -1
         resp['msg'] = '用户名重复'
         return ops_render('account/set.html', resp)
-    user_info = User.query.filter_by(uid = id).first()
+    user_info = User.query.filter_by(uid=id).first()
     if user_info:
         model_user = user_info
     else:
@@ -121,12 +139,20 @@ def set():
     if login_pwd != default_pwd:
         model_user.login_pwd = UserService.getPwd(login_pwd, model_user.login_salt)
 
-
     model_user.updated_time = createCurrentTime()
 
     db.session.add(model_user)
     db.session.commit()
     resp['code'] = 1
     resp['msg'] = "操作成功"
-    #return ops_render('account/set.html', resp)
+    # return ops_render('account/set.html', resp)
     return redirect(UrlManager.buildUrl('/account/index'))
+
+# @route_account.route('/ops',methods=['POST'])
+# def ops():
+#     resp_data = {}
+#     req = request.values
+#     if req[]
+
+
+
